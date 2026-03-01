@@ -1,0 +1,17 @@
+package com.winga.domain.enums;
+
+public enum NotificationType {
+    JOB_POSTED,
+    PROPOSAL_RECEIVED,
+    PROPOSAL_SHORTLISTED,
+    PROPOSAL_REJECTED,
+    HIRED,
+    WORK_SUBMITTED,
+    WORK_APPROVED,
+    PAYMENT_RELEASED,
+    DISPUTE_OPENED,
+    MILESTONE_FUNDED,
+    MILESTONE_COMPLETED,
+    MESSAGE_RECEIVED,
+    SYSTEM
+}
