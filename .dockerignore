@@ -1,0 +1,15 @@
+target/
+!target/*.jar
+.git
+.gitignore
+*.md
+.idea
+*.iml
+.env
+.env.*
+*.log
+run back.txt
+run-backend.sh
+admin-dashboard/
+frontend/
+docs/deploy/

@@ -32,6 +32,7 @@ public class SecurityConfig {
     private final CorsConfigurationSource corsConfigurationSource;
 
     private static final String[] PUBLIC_WHITELIST = {
+            "/",
             "/api/auth/register",
             "/api/auth/login",
             "/api/auth/send-otp",
@@ -41,6 +42,7 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api-docs/**",
+            "/v3/api-docs/**",
             "/actuator/health",
             "/ws/**"   // WebSocket handshake
     };
