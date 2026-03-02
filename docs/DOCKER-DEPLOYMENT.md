@@ -203,11 +203,23 @@ server {
 
 **Admin (admin.sokokuuonline.co.tz)**
 
+- **Muhimu:** Ikiwa admin inatumia relative URL `/api/...` (na hivyo inapost kwa admin.sokokuuonline.co.tz), ongeza **proxy ya `/api`** kwa backend. Vinginevyo utapata **405 Not Allowed** na "Backend returned invalid response (HTML)".
+
 ```nginx
 # /etc/nginx/sites-available/admin.sokokuuonline
 server {
     listen 80;
     server_name admin.sokokuuonline.co.tz;
+
+    # Proxy API calls to backend (fixes 405 when admin calls /api/auth/login on same host)
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 
     location / {
         proxy_pass http://127.0.0.1:3001;
@@ -264,5 +276,7 @@ Certbot ataongeza HTTPS kwa config ya Nginx.
 | CORS errors kwenye browser | Hakikisha `APP_CORS_ALLOWED_ORIGINS` kwenye `.env` ina domains za frontend na admin (comma-separated). |
 | Frontend haijui API | Hakikisha `NEXT_PUBLIC_API_URL=https://api.sokokuuonline.co.tz` wakati wa build (tayari iko kwenye `.env` na compose). |
 | Admin haijui API | Build ya admin inatumia `VITE_API_URL`; compose inapita `NEXT_PUBLIC_API_URL`. Rebuild: `docker compose build admin --no-cache`. |
+| Admin: 405 Not Allowed / "Backend returned invalid response (HTML)" | Request inakwenda kwa admin.sokokuuonline.co.tz/api/... badala ya backend. **Suluhu 1:** Rebuild admin na `VITE_API_URL=https://api.sokokuuonline.co.tz` (Vite inaembed env wakati wa build). **Suluhu 2:** Ongeza proxy ya `/api/` kwenye Nginx ya admin (tazama config ya admin hapa juu) ili /api/* ipitie kwa backend (127.0.0.1:8080). |
+| **Admin login: 403 (empty body)** | **Suluhu 1:** Rebuild na redeploy backend ili `POST /api/auth/admin/login` iwe kwenye security whitelist. **Suluhu 2:** Ikiwa Nginx iko mbele ya API, hakikisha haizuii POST kwa `/api/auth/admin/login` (usitumie rule inayoblock path hii). **Suluhu 3:** CORS — hakikisha origin ya admin (e.g. `http://localhost:5174` au `https://admin.sokokuuonline.co.tz`) iko kwenye `APP_CORS_ALLOWED_ORIGINS` / `app.cors.allowed-origins-extra`. |
 
 Ikiwa umefuata hatua hapa, backend, frontend, admin, MySQL na phpMyAdmin zinapaswa kufanya kazi na domains zako (winga.sokokuuonline.co.tz, swinga.sokokuuonline.co.tz/phpmyadmin, api.sokokuuonline.co.tz, admin.sokokuuonline.co.tz).

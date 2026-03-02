@@ -35,6 +35,7 @@ public class SecurityConfig {
             "/",
             "/api/auth/register",
             "/api/auth/login",
+            "/api/auth/admin/login",
             "/api/auth/send-otp",
             "/api/auth/verify-otp",
             "/api/auth/register/complete",
@@ -56,6 +57,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // CORS preflight (must be allowed so browser gets CORS headers)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Admin dashboard login (explicit so 403 never happens when backend is up to date)
+                        .requestMatchers(HttpMethod.POST, "/api/auth/admin/login").permitAll()
                         // Public
                         .requestMatchers(PUBLIC_WHITELIST).permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()

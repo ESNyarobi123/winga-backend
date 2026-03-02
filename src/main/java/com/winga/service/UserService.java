@@ -96,6 +96,16 @@ public class UserService {
         return new AuthResponse(accessToken, refreshToken, toUserResponse(user));
     }
 
+    /** Admin dashboard login: same as login but only allows ADMIN and SUPER_ADMIN. */
+    public AuthResponse loginAsAdmin(LoginRequest request) {
+        AuthResponse auth = login(request);
+        if (auth.user() != null && auth.user().role() != Role.ADMIN && auth.user().role() != Role.SUPER_ADMIN) {
+            throw new BusinessException("Access denied. Admin or Super Admin only.");
+        }
+        log.info("Admin logged in: {}", request.email());
+        return auth;
+    }
+
     public User getByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("User not found: " + email));

@@ -54,6 +54,14 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Login successful!", auth));
     }
 
+    @PostMapping("/admin/login")
+    @Operation(summary = "Admin dashboard login (ADMIN/SUPER_ADMIN only)")
+    public ResponseEntity<ApiResponse<AuthResponse>> adminLogin(
+            @Valid @RequestBody LoginRequest request) {
+        AuthResponse auth = userService.loginAsAdmin(request);
+        return ResponseEntity.ok(ApiResponse.success("Welcome to Winga Admin", auth));
+    }
+
     // ─── OTP flow: one screen for register & login (email → OTP → dashboard or choose role) ───
 
     @PostMapping("/send-otp")

@@ -5,5 +5,5 @@ mvn spring-boot:run
 
 
 http://localhost:5174/login
-admin@winga.co.tz 
+admin@winga.co.tz
 Admin@1234
