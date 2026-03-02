@@ -87,3 +87,21 @@ spring:
 ```
 
 Weka `DB_USERNAME` na `DB_PASSWORD` ikiwa MySQL yako inahitaji.
+
+**Mahali pa kuongeza/kubadilisha database details (URL, user, password) kwa dev/Docker/production:**  
+→ [DATABASE-CONNECTION.md](DATABASE-CONNECTION.md)
+
+---
+
+## SQL migrations (update kwenye DB iliyopo)
+
+Ikiwa umekimbia `schema-winga.sql` zamani na unahitaji columns/tables mpya bila kuharibu data:
+
+1. **v1-admin-panel.sql** — job moderation, job_categories  
+2. **v2-admin-login.sql** — admin user  
+3. **v3-payment-options.sql** — payment_options table  
+4. **v4-update.sql** — sasisho zote zilizobaki (columns jobs: city, region, latitude, longitude, attachment_urls; moderation; job_categories & payment_options IF NOT EXISTS). **Inaweza kukimbia mara nyingi** (idempotent).
+
+```bash
+mysql -u root -p winga_db < src/main/resources/sql/v4-update.sql
+```
