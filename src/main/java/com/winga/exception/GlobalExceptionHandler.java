@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -48,6 +50,27 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error("Invalid email or password."));
+    }
+
+    /** User not found (e.g. loadUserByUsername) → 401 so admin/frontend show "Invalid email or password" instead of 500 */
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUsernameNotFound(UsernameNotFoundException ex) {
+        log.debug("Login failed (user not found): {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("Invalid email or password."));
+    }
+
+    /** Spring wraps UsernameNotFoundException in this when auth fails → return 401 not 500 */
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInternalAuth(InternalAuthenticationServiceException ex) {
+        if (ex.getCause() instanceof UsernameNotFoundException) {
+            log.debug("Login failed (user not found): {}", ex.getCause().getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Invalid email or password."));
+        }
+        log.error("Authentication service error: {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("An unexpected error occurred. Please try again later."));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
