@@ -6,6 +6,9 @@
 --
 -- Order of scripts if starting fresh: schema-winga.sql → v1-admin-panel.sql
 --   → v2-admin-login.sql → v3-payment-options.sql → v4-update.sql (this file)
+--   → v5-seed-categories.sql (optional: seed job categories)
+--   → v6-seed-jobs.sql (optional: seed ~20 sample jobs + demo client)
+--   → v7-seed-freelancers.sql (optional: seed demo freelancers for Find Workers page)
 -- =============================================================================
 
 USE winga_db;

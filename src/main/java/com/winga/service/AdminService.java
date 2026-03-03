@@ -443,7 +443,7 @@ public class AdminService {
     @Transactional(readOnly = true)
     public List<JobCategoryResponse> listCategories(User admin) {
         ensureAdmin(admin);
-        return jobCategoryRepository.findAll().stream()
+        return jobCategoryRepository.findAllByOrderBySortOrderAsc().stream()
                 .map(this::toCategoryResponse)
                 .collect(Collectors.toList());
     }
