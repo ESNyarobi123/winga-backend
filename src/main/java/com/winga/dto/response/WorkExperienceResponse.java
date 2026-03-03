@@ -9,5 +9,6 @@ public record WorkExperienceResponse(
         String startDate,
         String endDate,
         String description,
+        java.util.List<String> skillsLearned,
         LocalDateTime createdAt
 ) {}

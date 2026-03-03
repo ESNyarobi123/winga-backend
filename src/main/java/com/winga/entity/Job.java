@@ -65,6 +65,22 @@ public class Job {
     @Column(length = 100)
     private String category;
 
+    /** Filter: slug from filter_options (EMPLOYMENT_TYPE) e.g. full-time, part-time */
+    @Column(name = "employment_type", length = 100)
+    private String employmentType;
+
+    /** Filter: slug from filter_options (SOCIAL_MEDIA) e.g. instagram, onlyfans */
+    @Column(name = "social_media", length = 100)
+    private String socialMedia;
+
+    /** Filter: slug from filter_options (SOFTWARE) e.g. excel, photoshop */
+    @Column(name = "software", length = 100)
+    private String software;
+
+    /** Filter: slug from filter_options (LANGUAGE) e.g. english, swahili */
+    @Column(name = "language", length = 100)
+    private String language;
+
     /** Job location: city */
     @Column(length = 100)
     private String city;

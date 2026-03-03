@@ -2,6 +2,7 @@ package com.winga.service;
 
 import com.winga.domain.enums.ContractStatus;
 import com.winga.domain.enums.Currency;
+import com.winga.domain.enums.FilterOptionType;
 import com.winga.domain.enums.JobStatus;
 import com.winga.domain.enums.ModerationStatus;
 import com.winga.domain.enums.ProposalStatus;
@@ -12,14 +13,19 @@ import com.winga.dto.request.AdminCreateJobRequest;
 import com.winga.dto.request.AdminCreateUserRequest;
 import com.winga.dto.request.AdminUpdateJobRequest;
 import com.winga.dto.request.AdminUpdateUserRequest;
+import com.winga.dto.request.AdminLanguageRequest;
+import com.winga.dto.request.FilterOptionRequest;
 import com.winga.dto.request.JobCategoryRequest;
 import com.winga.dto.request.JobRequest;
 import com.winga.dto.request.ModerateJobRequest;
 import com.winga.dto.request.PaymentOptionRequest;
+import com.winga.dto.request.PaymentGatewayConfigRequest;
 import com.winga.dto.response.*;
 import com.winga.entity.Contract;
 import com.winga.entity.Job;
+import com.winga.entity.FilterOption;
 import com.winga.entity.JobCategory;
+import com.winga.entity.PaymentGatewayConfig;
 import com.winga.entity.PaymentOption;
 import com.winga.entity.Proposal;
 import com.winga.entity.User;
@@ -28,14 +34,18 @@ import com.winga.exception.BusinessException;
 import com.winga.exception.ResourceNotFoundException;
 import com.winga.exception.UnauthorizedAccessException;
 import com.winga.repository.ContractRepository;
+import com.winga.repository.FilterOptionRepository;
 import com.winga.repository.JobCategoryRepository;
 import com.winga.repository.JobRepository;
+import com.winga.repository.PaymentGatewayConfigRepository;
 import com.winga.repository.PaymentOptionRepository;
 import com.winga.repository.ProposalRepository;
 import com.winga.repository.UserRepository;
 import com.winga.repository.WalletRepository;
 import com.winga.service.CertificationService;
+import com.winga.service.NotificationService;
 import com.winga.service.PortfolioItemService;
+import com.winga.service.WorkExperienceService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,11 +55,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -60,7 +77,10 @@ public class AdminService {
     private final UserService userService;
     private final JobRepository jobRepository;
     private final JobCategoryRepository jobCategoryRepository;
+    private final FilterOptionRepository filterOptionRepository;
     private final PaymentOptionRepository paymentOptionRepository;
+    private final PaymentGatewayConfigRepository paymentGatewayConfigRepository;
+    private final ObjectMapper objectMapper;
     private final ProposalRepository proposalRepository;
     private final ContractRepository contractRepository;
     private final ContractService contractService;
@@ -71,6 +91,8 @@ public class AdminService {
     private final WalletRepository walletRepository;
     private final PortfolioItemService portfolioItemService;
     private final CertificationService certificationService;
+    private final NotificationService notificationService;
+    private final WorkExperienceService workExperienceService;
 
     @Transactional(readOnly = true)
     public Page<UserResponse> listUsers(Pageable pageable) {
@@ -177,6 +199,50 @@ public class AdminService {
         return userService.toUserResponse(user);
     }
 
+    /** Set worker profile as verified (badge). Only for FREELANCER. */
+    @Transactional
+    public UserResponse verifyProfile(Long userId, boolean verified, User admin) {
+        ensureAdmin(admin);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        if (user.getRole() != Role.FREELANCER) {
+            throw new BusinessException("Profile verification applies only to workers (FREELANCER).");
+        }
+        user.setProfileVerified(verified);
+        user.setProfileVerifiedAt(verified ? LocalDateTime.now() : null);
+        userRepository.save(user);
+        log.info("Admin {} set user {} profile verified to {}", admin.getId(), userId, verified);
+        return userService.toUserResponse(user);
+    }
+
+    /** Bulk verify or unverify worker profiles. Skips non-FREELANCER IDs. */
+    @Transactional
+    public int bulkVerifyProfile(com.winga.dto.request.AdminBulkVerifyProfileRequest request, User admin) {
+        ensureAdmin(admin);
+        if (request.userIds() == null || request.userIds().isEmpty()) {
+            return 0;
+        }
+        int updated = 0;
+        for (Long userId : request.userIds()) {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user != null && user.getRole() == Role.FREELANCER) {
+                user.setProfileVerified(request.verified());
+                user.setProfileVerifiedAt(request.verified() ? LocalDateTime.now() : null);
+                userRepository.save(user);
+                updated++;
+            }
+        }
+        log.info("Admin {} bulk set profile verified to {} for {} users", admin.getId(), request.verified(), updated);
+        return updated;
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.winga.dto.response.WorkExperienceResponse> getUserExperiences(Long userId, User admin) {
+        ensureAdmin(admin);
+        userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        return workExperienceService.getMyExperiences(userId);
+    }
+
     @Transactional(readOnly = true)
     public AdminStatsResponse getStats(User admin) {
         ensureAdmin(admin);
@@ -185,6 +251,7 @@ public class AdminService {
         long totalFreelancers = userRepository.countByRole(Role.FREELANCER);
         long openJobs = jobRepository.countByStatus(com.winga.domain.enums.JobStatus.OPEN);
         long totalJobs = jobRepository.count();
+        long totalProposals = proposalRepository.count();
         long activeContracts = contractRepository.countByStatus(ContractStatus.ACTIVE);
         long completedContracts = contractRepository.countByStatus(ContractStatus.COMPLETED);
         long disputedContracts = contractRepository.countByStatus(ContractStatus.DISPUTED);
@@ -192,9 +259,33 @@ public class AdminService {
         if (revenue == null) revenue = BigDecimal.ZERO;
         return new AdminStatsResponse(
                 totalUsers, totalClients, totalFreelancers,
-                openJobs, totalJobs,
+                openJobs, totalJobs, totalProposals,
                 activeContracts, completedContracts, disputedContracts,
                 revenue);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminAnalyticsResponse getAnalytics(User admin, LocalDateTime from, LocalDateTime to) {
+        ensureAdmin(admin);
+        List<Object[]> categoryRows = jobRepository.countByCategory();
+        List<Map<String, Object>> jobsPerCategory = categoryRows.stream()
+                .map(row -> Map.<String, Object>of("category", row[0] != null ? row[0] : "", "count", ((Number) row[1]).longValue()))
+                .collect(Collectors.toList());
+        List<Object[]> proposalRows = proposalRepository.countProposalsByJobId(
+                org.springframework.data.domain.PageRequest.of(0, 50));
+        List<Map<String, Object>> proposalsPerJob = proposalRows.stream()
+                .map(row -> Map.<String, Object>of("jobId", ((Number) row[0]).longValue(), "proposalCount", ((Number) row[1]).longValue()))
+                .collect(Collectors.toList());
+        LocalDateTime fromDate = from != null ? from : LocalDateTime.now().minusDays(30);
+        LocalDateTime toDate = to != null ? to : LocalDateTime.now();
+        BigDecimal revenue = contractRepository.revenueBetween(fromDate, toDate);
+        if (revenue == null) revenue = BigDecimal.ZERO;
+        return new AdminAnalyticsResponse(
+                jobsPerCategory,
+                proposalsPerJob,
+                revenue,
+                fromDate.toString(),
+                toDate.toString());
     }
 
     @Transactional(readOnly = true)
@@ -314,6 +405,10 @@ public class AdminService {
         if (request.tags() != null) job.setTags(request.tags().isEmpty() ? null : String.join(",", request.tags()));
         if (request.category() != null) job.setCategory(request.category());
         if (request.experienceLevel() != null) job.setExperienceLevel(request.experienceLevel());
+        if (request.employmentType() != null) job.setEmploymentType(request.employmentType());
+        if (request.socialMedia() != null) job.setSocialMedia(request.socialMedia());
+        if (request.software() != null) job.setSoftware(request.software());
+        if (request.language() != null) job.setLanguage(request.language());
         if (request.status() != null) job.setStatus(request.status());
         if (request.moderationStatus() != null) job.setModerationStatus(request.moderationStatus());
         if (request.isFeatured() != null) job.setIsFeatured(request.isFeatured());
@@ -345,6 +440,14 @@ public class AdminService {
         job.setModerationStatus(request.status());
         jobRepository.save(job);
         log.info("Admin {} moderated job {} to {}", admin.getId(), jobId, request.status());
+        User client = job.getClient();
+        if (client != null) {
+            if (request.status() == ModerationStatus.APPROVED) {
+                notificationService.notifyJobApproved(client, job.getTitle(), jobId);
+            } else if (request.status() == ModerationStatus.REJECTED) {
+                notificationService.notifyJobRejected(client, job.getTitle(), jobId);
+            }
+        }
         return jobService.toJobResponse(job);
     }
 
@@ -364,6 +467,10 @@ public class AdminService {
                 request.tags(),
                 request.category(),
                 request.experienceLevel(),
+                request.employmentType(),
+                request.socialMedia(),
+                request.software(),
+                request.language(),
                 null, null, null, null, null);
         return jobService.createJob(client, jr);
     }
@@ -485,6 +592,67 @@ public class AdminService {
         return new JobCategoryResponse(c.getId(), c.getName(), c.getSlug(), c.getSortOrder(), c.getCreatedAt());
     }
 
+    // ─── Filter options (Employment Type, Social Media, Software, Languages) ───────
+
+    @Transactional(readOnly = true)
+    public List<FilterOptionResponse> listFilterOptions(FilterOptionType type, User admin) {
+        ensureAdmin(admin);
+        return filterOptionRepository.findByTypeOrderBySortOrderAsc(type).stream()
+                .map(this::toFilterOptionResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public FilterOptionResponse createLanguage(AdminLanguageRequest request, User admin) {
+        return createFilterOption(new FilterOptionRequest(
+                FilterOptionType.LANGUAGE, request.name(), request.slug(), request.sortOrder()), admin);
+    }
+
+    @Transactional
+    public FilterOptionResponse updateLanguage(Long id, AdminLanguageRequest request, User admin) {
+        return updateFilterOption(id, new FilterOptionRequest(
+                FilterOptionType.LANGUAGE, request.name(), request.slug(), request.sortOrder()), admin);
+    }
+
+    @Transactional
+    public FilterOptionResponse createFilterOption(FilterOptionRequest request, User admin) {
+        ensureAdmin(admin);
+        if (filterOptionRepository.existsByTypeAndSlug(request.type(), request.slug())) {
+            throw new BusinessException("Filter option slug already exists for this type: " + request.slug());
+        }
+        FilterOption opt = FilterOption.builder()
+                .type(request.type())
+                .name(request.name())
+                .slug(request.slug())
+                .sortOrder(request.sortOrder() != null ? request.sortOrder() : 0)
+                .build();
+        opt = filterOptionRepository.save(opt);
+        return toFilterOptionResponse(opt);
+    }
+
+    @Transactional
+    public FilterOptionResponse updateFilterOption(Long id, FilterOptionRequest request, User admin) {
+        ensureAdmin(admin);
+        FilterOption opt = filterOptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("FilterOption", id));
+        opt.setType(request.type());
+        opt.setName(request.name());
+        opt.setSlug(request.slug());
+        if (request.sortOrder() != null) opt.setSortOrder(request.sortOrder());
+        filterOptionRepository.save(opt);
+        return toFilterOptionResponse(opt);
+    }
+
+    @Transactional
+    public void deleteFilterOption(Long id, User admin) {
+        ensureAdmin(admin);
+        if (!filterOptionRepository.existsById(id)) throw new ResourceNotFoundException("FilterOption", id);
+        filterOptionRepository.deleteById(id);
+    }
+
+    private FilterOptionResponse toFilterOptionResponse(FilterOption o) {
+        return new FilterOptionResponse(o.getId(), o.getType(), o.getName(), o.getSlug(), o.getSortOrder(), o.getCreatedAt());
+    }
+
     // ─── Payment options ───────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
@@ -542,6 +710,94 @@ public class AdminService {
         return new PaymentOptionResponse(o.getId(), o.getName(), o.getSlug(), o.getDescription(), o.getIsActive(), o.getSortOrder(), o.getCreatedAt());
     }
 
+    // ─── Payment gateway config (API keys, settings) ─────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<PaymentGatewayConfigResponse> listPaymentGatewayConfigs(User admin) {
+        ensureAdmin(admin);
+        return paymentGatewayConfigRepository.findAllByOrderByDisplayNameAsc().stream()
+                .map(this::toPaymentGatewayConfigResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentGatewayConfigResponse getPaymentGatewayConfigBySlug(String slug, User admin) {
+        ensureAdmin(admin);
+        PaymentGatewayConfig cfg = paymentGatewayConfigRepository.findByGatewaySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment gateway not found: " + slug));
+        return toPaymentGatewayConfigResponse(cfg);
+    }
+
+    @Transactional
+    public PaymentGatewayConfigResponse createPaymentGatewayConfig(PaymentGatewayConfigRequest request, User admin) {
+        ensureAdmin(admin);
+        if (paymentGatewayConfigRepository.existsByGatewaySlug(request.gatewaySlug())) {
+            throw new BusinessException("Gateway already exists: " + request.gatewaySlug());
+        }
+        String configJson = configMapToJson(request.config());
+        PaymentGatewayConfig cfg = PaymentGatewayConfig.builder()
+                .gatewaySlug(request.gatewaySlug().trim().toLowerCase())
+                .displayName(request.displayName().trim())
+                .configJson(configJson)
+                .isActive(request.isActive() != null ? request.isActive() : true)
+                .build();
+        cfg = paymentGatewayConfigRepository.save(cfg);
+        log.info("Admin {} created payment gateway config: {}", admin.getId(), cfg.getGatewaySlug());
+        return toPaymentGatewayConfigResponse(cfg);
+    }
+
+    @Transactional
+    public PaymentGatewayConfigResponse updatePaymentGatewayConfig(Long id, PaymentGatewayConfigRequest request, User admin) {
+        ensureAdmin(admin);
+        PaymentGatewayConfig cfg = paymentGatewayConfigRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("PaymentGatewayConfig", id));
+        cfg.setDisplayName(request.displayName().trim());
+        if (request.config() != null && !request.config().isEmpty()) {
+            cfg.setConfigJson(configMapToJson(request.config()));
+        }
+        if (request.isActive() != null) cfg.setIsActive(request.isActive());
+        paymentGatewayConfigRepository.save(cfg);
+        return toPaymentGatewayConfigResponse(cfg);
+    }
+
+    @Transactional
+    public void deletePaymentGatewayConfig(Long id, User admin) {
+        ensureAdmin(admin);
+        if (!paymentGatewayConfigRepository.existsById(id)) throw new ResourceNotFoundException("PaymentGatewayConfig", id);
+        paymentGatewayConfigRepository.deleteById(id);
+    }
+
+    private PaymentGatewayConfigResponse toPaymentGatewayConfigResponse(PaymentGatewayConfig c) {
+        Map<String, String> masked = maskConfigJson(c.getConfigJson());
+        return new PaymentGatewayConfigResponse(
+                c.getId(), c.getGatewaySlug(), c.getDisplayName(),
+                masked, c.getIsActive(), c.getCreatedAt(), c.getUpdatedAt());
+    }
+
+    private String configMapToJson(Map<String, String> config) {
+        if (config == null || config.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(config);
+        } catch (Exception e) {
+            throw new BusinessException("Invalid config: " + e.getMessage());
+        }
+    }
+
+    private Map<String, String> maskConfigJson(String configJson) {
+        Map<String, String> out = new LinkedHashMap<>();
+        if (configJson == null || configJson.isBlank()) return out;
+        try {
+            Map<String, String> map = objectMapper.readValue(configJson, new TypeReference<Map<String, String>>() {});
+            for (Map.Entry<String, String> e : map.entrySet()) {
+                String v = e.getValue();
+                out.put(e.getKey(), v == null || v.length() <= 3 ? "***" : "***" + v.substring(v.length() - 3));
+            }
+            return out;
+        } catch (Exception e) {
+            return out;
+        }
+    }
+
     // ─── Portfolio & Certification moderation ───────────────────────────────────
 
     @Transactional(readOnly = true)
@@ -566,5 +822,118 @@ public class AdminService {
     public CertificationResponse moderateCertification(Long id, ModerationStatus moderationStatus, User admin) {
         ensureAdmin(admin);
         return certificationService.setModerationStatus(id, moderationStatus);
+    }
+
+    // ─── Export CSV ─────────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public byte[] exportJobsCsv(User admin) {
+        ensureAdmin(admin);
+        List<Job> jobs = jobRepository.findAll();
+        StringBuilder sb = new StringBuilder();
+        sb.append("id,title,clientEmail,budget,status,category,city,region,createdAt\n");
+        DateTimeFormatter dtf = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        for (Job j : jobs) {
+            sb.append(escapeCsv(j.getId())).append(",");
+            sb.append(escapeCsv(j.getTitle())).append(",");
+            sb.append(escapeCsv(j.getClient() != null ? j.getClient().getEmail() : "")).append(",");
+            sb.append(j.getBudget() != null ? j.getBudget().toPlainString() : "").append(",");
+            sb.append(escapeCsv(j.getStatus() != null ? j.getStatus().name() : "")).append(",");
+            sb.append(escapeCsv(j.getCategory())).append(",");
+            sb.append(escapeCsv(j.getCity())).append(",");
+            sb.append(escapeCsv(j.getRegion())).append(",");
+            sb.append(j.getCreatedAt() != null ? escapeCsv(j.getCreatedAt().format(dtf)) : "").append("\n");
+        }
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportUsersCsv(User admin) {
+        ensureAdmin(admin);
+        List<User> users = userRepository.findAll();
+        StringBuilder sb = new StringBuilder();
+        sb.append("id,email,fullName,role,isVerified,createdAt\n");
+        DateTimeFormatter dtf = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        for (User u : users) {
+            sb.append(escapeCsv(u.getId())).append(",");
+            sb.append(escapeCsv(u.getEmail())).append(",");
+            sb.append(escapeCsv(u.getFullName())).append(",");
+            sb.append(escapeCsv(u.getRole() != null ? u.getRole().name() : "")).append(",");
+            sb.append(u.getIsVerified() != null && u.getIsVerified() ? "1" : "0").append(",");
+            sb.append(u.getCreatedAt() != null ? escapeCsv(u.getCreatedAt().format(dtf)) : "").append("\n");
+        }
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportWorkersCsv(User admin, boolean incompleteOnly, boolean withCvOnly) {
+        return exportWorkersCsv(admin, incompleteOnly, withCvOnly, null);
+    }
+
+    /** Export workers CSV. If userIds is non-null and non-empty, only those FREELANCERs are exported. */
+    @Transactional(readOnly = true)
+    public byte[] exportWorkersCsv(User admin, boolean incompleteOnly, boolean withCvOnly, List<Long> userIds) {
+        ensureAdmin(admin);
+        List<User> workers = userIds != null && !userIds.isEmpty()
+                ? userRepository.findAllById(userIds).stream().filter(u -> u.getRole() == Role.FREELANCER).collect(Collectors.toList())
+                : userRepository.findByRole(Role.FREELANCER);
+        if (incompleteOnly) {
+            workers = workers.stream()
+                    .filter(u -> u.getProfileCompleteness() == null || u.getProfileCompleteness() < 100)
+                    .collect(Collectors.toList());
+        }
+        if (withCvOnly) {
+            workers = workers.stream()
+                    .filter(u -> u.getCvUrl() != null && !u.getCvUrl().isBlank())
+                    .collect(Collectors.toList());
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("id,email,fullName,headline,country,profileCompleteness,profileVerified,cvUrl,createdAt\n");
+        DateTimeFormatter dtf = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        for (User u : workers) {
+            sb.append(escapeCsv(u.getId())).append(",");
+            sb.append(escapeCsv(u.getEmail())).append(",");
+            sb.append(escapeCsv(u.getFullName())).append(",");
+            sb.append(escapeCsv(u.getHeadline())).append(",");
+            sb.append(escapeCsv(u.getCountry())).append(",");
+            sb.append(u.getProfileCompleteness() != null ? u.getProfileCompleteness() : "").append(",");
+            sb.append(u.getProfileVerified() != null && u.getProfileVerified() ? "1" : "0").append(",");
+            sb.append(escapeCsv(u.getCvUrl())).append(",");
+            sb.append(u.getCreatedAt() != null ? escapeCsv(u.getCreatedAt().format(dtf)) : "").append("\n");
+        }
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportContractsCsv(User admin) {
+        ensureAdmin(admin);
+        List<Contract> contracts = contractRepository.findAll();
+        StringBuilder sb = new StringBuilder();
+        sb.append("id,jobId,jobTitle,clientEmail,freelancerEmail,status,totalAmount,escrowAmount,releasedAmount,platformFee,completedAt,createdAt\n");
+        DateTimeFormatter dtf = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        for (Contract c : contracts) {
+            sb.append(escapeCsv(c.getId())).append(",");
+            sb.append(c.getJob() != null ? c.getJob().getId() : "").append(",");
+            sb.append(escapeCsv(c.getJob() != null ? c.getJob().getTitle() : "")).append(",");
+            sb.append(escapeCsv(c.getClient() != null ? c.getClient().getEmail() : "")).append(",");
+            sb.append(escapeCsv(c.getFreelancer() != null ? c.getFreelancer().getEmail() : "")).append(",");
+            sb.append(escapeCsv(c.getStatus() != null ? c.getStatus().name() : "")).append(",");
+            sb.append(c.getTotalAmount() != null ? c.getTotalAmount().toPlainString() : "").append(",");
+            sb.append(c.getEscrowAmount() != null ? c.getEscrowAmount().toPlainString() : "").append(",");
+            sb.append(c.getReleasedAmount() != null ? c.getReleasedAmount().toPlainString() : "").append(",");
+            sb.append(c.getPlatformFeeCollected() != null ? c.getPlatformFeeCollected().toPlainString() : "").append(",");
+            sb.append(c.getCompletedAt() != null ? escapeCsv(c.getCompletedAt().format(dtf)) : "").append(",");
+            sb.append(c.getCreatedAt() != null ? escapeCsv(c.getCreatedAt().format(dtf)) : "").append("\n");
+        }
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static String escapeCsv(Object o) {
+        if (o == null) return "";
+        String s = o.toString();
+        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
+            return "\"" + s.replace("\"", "\"\"") + "\"";
+        }
+        return s;
     }
 }

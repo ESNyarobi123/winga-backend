@@ -7,8 +7,15 @@ import com.winga.dto.request.JobRequest;
 import com.winga.dto.response.JobResponse;
 import com.winga.exception.ResourceNotFoundException;
 import com.winga.exception.UnauthorizedAccessException;
+import com.winga.domain.enums.FilterOptionType;
+import com.winga.dto.response.FilterOptionResponse;
+import com.winga.dto.response.FilterOptionsPublicResponse;
+import com.winga.entity.FilterOption;
+import com.winga.repository.FilterOptionRepository;
+import com.winga.repository.JobCategoryRepository;
 import com.winga.repository.JobRepository;
 import com.winga.repository.ProposalRepository;
+import com.winga.util.SortUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -19,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +34,8 @@ import java.util.List;
 public class JobService {
 
     private final JobRepository jobRepository;
+    private final JobCategoryRepository jobCategoryRepository;
+    private final FilterOptionRepository filterOptionRepository;
     private final ProposalRepository proposalRepository;
     private final UserService userService;
 
@@ -45,6 +55,10 @@ public class JobService {
                 .tags(request.tags() != null ? String.join(",", request.tags()) : null)
                 .category(request.category())
                 .experienceLevel(request.experienceLevel())
+                .employmentType(request.employmentType())
+                .socialMedia(request.socialMedia())
+                .software(request.software())
+                .language(request.language())
                 .city(request.city())
                 .region(request.region())
                 .latitude(request.latitude())
@@ -63,10 +77,40 @@ public class JobService {
 
     @Transactional(readOnly = true)
     public Page<JobResponse> searchJobs(String keyword, String category,
+            String employmentType, String socialMedia, String software, String language,
+            String city, String region, Boolean featured,
             BigDecimal minBudget, BigDecimal maxBudget,
             Pageable pageable) {
-        return jobRepository.searchJobs(JobStatus.OPEN, keyword, category, minBudget, maxBudget, pageable)
+        Pageable safeSort = SortUtils.jobSort(pageable);
+        return jobRepository.searchJobs(JobStatus.OPEN, keyword, category,
+                employmentType, socialMedia, software, language,
+                city, region, featured,
+                minBudget, maxBudget, safeSort)
                 .map(this::toJobResponse);
+    }
+
+    /** Public list of job category names for find-jobs filters — from DB (admin-managed). */
+    @Transactional(readOnly = true)
+    public List<String> getCategoriesForPublic() {
+        return jobCategoryRepository.findAllByOrderBySortOrderAsc().stream()
+                .map(c -> c.getName())
+                .collect(Collectors.toList());
+    }
+
+    /** Public filter options for find-jobs (Employment Type, Social Media, Software, Languages) — from DB, admin-managed. */
+    @Transactional(readOnly = true)
+    public FilterOptionsPublicResponse getFilterOptionsForPublic() {
+        List<FilterOptionResponse> employmentTypes = mapToResponse(filterOptionRepository.findByTypeOrderBySortOrderAsc(FilterOptionType.EMPLOYMENT_TYPE));
+        List<FilterOptionResponse> socialMedia = mapToResponse(filterOptionRepository.findByTypeOrderBySortOrderAsc(FilterOptionType.SOCIAL_MEDIA));
+        List<FilterOptionResponse> software = mapToResponse(filterOptionRepository.findByTypeOrderBySortOrderAsc(FilterOptionType.SOFTWARE));
+        List<FilterOptionResponse> languages = mapToResponse(filterOptionRepository.findByTypeOrderBySortOrderAsc(FilterOptionType.LANGUAGE));
+        return new FilterOptionsPublicResponse(employmentTypes, socialMedia, software, languages);
+    }
+
+    private static List<FilterOptionResponse> mapToResponse(List<FilterOption> list) {
+        return list.stream()
+                .map(o -> new FilterOptionResponse(o.getId(), o.getType(), o.getName(), o.getSlug(), o.getSortOrder(), o.getCreatedAt()))
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -103,6 +147,10 @@ public class JobService {
         job.setTags(request.tags() != null ? String.join(",", request.tags()) : null);
         job.setCategory(request.category());
         job.setExperienceLevel(request.experienceLevel());
+        if (request.employmentType() != null) job.setEmploymentType(request.employmentType());
+        if (request.socialMedia() != null) job.setSocialMedia(request.socialMedia());
+        if (request.software() != null) job.setSoftware(request.software());
+        if (request.language() != null) job.setLanguage(request.language());
         job.setCity(request.city());
         job.setRegion(request.region());
         job.setLatitude(request.latitude());
@@ -155,6 +203,10 @@ public class JobService {
                 tags,
                 job.getCategory(),
                 job.getExperienceLevel(),
+                job.getEmploymentType(),
+                job.getSocialMedia(),
+                job.getSoftware(),
+                job.getLanguage(),
                 job.getViewCount(),
                 proposalCount,
                 userService.toUserResponse(job.getClient()),

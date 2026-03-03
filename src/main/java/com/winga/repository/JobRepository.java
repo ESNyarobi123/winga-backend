@@ -30,6 +30,13 @@ public interface JobRepository extends JpaRepository<Job, Long> {
               AND (:keyword IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
                    OR LOWER(j.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
               AND (:category IS NULL OR j.category = :category)
+              AND (:employmentType IS NULL OR j.employmentType = :employmentType)
+              AND (:socialMedia IS NULL OR j.socialMedia = :socialMedia)
+              AND (:software IS NULL OR j.software = :software)
+              AND (:language IS NULL OR j.language = :language)
+              AND (:city IS NULL OR :city = '' OR LOWER(COALESCE(j.city, '')) LIKE LOWER(CONCAT('%', :city, '%')))
+              AND (:region IS NULL OR :region = '' OR LOWER(COALESCE(j.region, '')) LIKE LOWER(CONCAT('%', :region, '%')))
+              AND (:featured IS NULL OR (j.isFeatured = :featured))
               AND (:minBudget IS NULL OR j.budget >= :minBudget)
               AND (:maxBudget IS NULL OR j.budget <= :maxBudget)
             """)
@@ -37,6 +44,13 @@ public interface JobRepository extends JpaRepository<Job, Long> {
             JobStatus status,
             String keyword,
             String category,
+            String employmentType,
+            String socialMedia,
+            String software,
+            String language,
+            String city,
+            String region,
+            Boolean featured,
             BigDecimal minBudget,
             BigDecimal maxBudget,
             Pageable pageable);
@@ -48,4 +62,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     List<Job> findByClientIdAndStatus(Long clientId, JobStatus status);
 
     long countByStatus(JobStatus status);
+
+    @Query("SELECT j.category, COUNT(j) FROM Job j WHERE j.category IS NOT NULL AND j.category <> '' GROUP BY j.category ORDER BY COUNT(j) DESC")
+    List<Object[]> countByCategory();
 }

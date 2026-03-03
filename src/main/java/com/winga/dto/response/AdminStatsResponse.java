@@ -11,6 +11,7 @@ public record AdminStatsResponse(
         long totalFreelancers,
         long openJobs,
         long totalJobs,
+        long totalProposals,
         long activeContracts,
         long completedContracts,
         long disputedContracts,

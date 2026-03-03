@@ -64,6 +64,15 @@ public class ProposalService {
             throw new BusinessException("Active monthly subscription is required to submit proposals. Please subscribe first.");
         }
 
+        // Business rule: Freelancer must have complete profile to apply (required: name, country, headline, languages, payment, work type, timezone)
+        if (freelancer.getRole() == Role.FREELANCER) {
+            User fresh = userService.getById(freelancer.getId());
+            Integer completeness = fresh.getProfileCompleteness();
+            if (completeness == null || completeness < 100) {
+                throw new BusinessException("Complete your profile before applying (headline, country, languages, payment, work type, timezone).");
+            }
+        }
+
         Proposal proposal = Proposal.builder()
                 .job(job)
                 .freelancer(freelancer)

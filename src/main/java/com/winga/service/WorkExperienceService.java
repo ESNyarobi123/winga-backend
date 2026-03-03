@@ -1,5 +1,7 @@
 package com.winga.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.winga.dto.request.WorkExperienceRequest;
 import com.winga.dto.response.WorkExperienceResponse;
 import com.winga.entity.User;
@@ -10,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,6 +21,7 @@ import java.util.stream.Collectors;
 public class WorkExperienceService {
 
     private final WorkExperienceRepository workExperienceRepository;
+    private final ObjectMapper objectMapper;
 
     public List<WorkExperienceResponse> getMyExperiences(Long userId) {
         return workExperienceRepository.findByUserIdOrderByCreatedAtDesc(userId)
@@ -28,6 +32,7 @@ public class WorkExperienceService {
 
     @Transactional
     public WorkExperienceResponse addExperience(User user, WorkExperienceRequest request) {
+        String skillsLearnedJson = serializeSkillsLearned(request.skillsLearned());
         WorkExperience exp = WorkExperience.builder()
                 .user(user)
                 .title(request.title().trim())
@@ -35,6 +40,7 @@ public class WorkExperienceService {
                 .startDate(request.startDate() != null ? request.startDate().trim() : null)
                 .endDate(request.endDate() != null ? request.endDate().trim() : null)
                 .description(request.description() != null ? request.description().trim() : null)
+                .skillsLearned(skillsLearnedJson)
                 .build();
         exp = workExperienceRepository.save(exp);
         return toResponse(exp);
@@ -65,7 +71,26 @@ public class WorkExperienceService {
                 e.getStartDate(),
                 e.getEndDate(),
                 e.getDescription(),
+                parseSkillsLearned(e.getSkillsLearned()),
                 e.getCreatedAt()
         );
+    }
+
+    private String serializeSkillsLearned(List<String> list) {
+        if (list == null || list.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(list);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private List<String> parseSkillsLearned(String json) {
+        if (json == null || json.isBlank()) return Collections.emptyList();
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception ex) {
+            return Collections.emptyList();
+        }
     }
 }

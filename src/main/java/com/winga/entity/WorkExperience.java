@@ -44,6 +44,10 @@ public class WorkExperience {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /** Skills learned: JSON array e.g. ["General - Intermediate", "Sales - Intermediate"] */
+    @Column(name = "skills_learned", columnDefinition = "TEXT")
+    private String skillsLearned;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

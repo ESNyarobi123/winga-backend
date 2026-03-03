@@ -1,27 +1,24 @@
-# Stage 1: Build
-FROM eclipse-temurin:21-jdk AS builder
+# Build stage (use JDK 21 for Lombok compatibility)
+FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends maven && rm -rf /var/lib/apt/lists/*
 
+COPY mvnw .
+COPY .mvn .mvn
 COPY pom.xml .
-COPY src ./src
-RUN mvn package -DskipTests -B
+RUN ./mvnw dependency:go-offline -B
 
-# Stage 2: Run
+COPY src src
+RUN ./mvnw package -DskipTests -B
+
+# Runtime stage
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-RUN apk add --no-cache dumb-init
-
-# Create non-root user
-RUN adduser -D -g "" appuser
-
-COPY --from=builder /app/target/*.jar app.jar
+RUN adduser -D -u 1000 appuser
+COPY --from=build /app/target/*.jar app.jar
 RUN chown -R appuser:appuser /app
 
 USER appuser
-
 EXPOSE 8080
 
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -23,11 +23,14 @@ public class UploadController {
     private final FileUploadService fileUploadService;
 
     /**
-     * Upload a file. type: profile | job | proposal | general.
-     * Returns URL path (e.g. /uploads/profile/xxx.jpg). Use for profile image, job/proposal attachments.
+     * Upload a file. Returns URL path (or full URL if app.upload.base-url is set).
+     * Use returned URL in PATCH /api/users/me (profileImageUrl or cvUrl) so profile and admin can display it.
+     * - type=profile: profile picture (jpg, png, webp, gif)
+     * - type=cv: CV document (PDF recommended)
+     * - type=job, type=proposal, type=general: other attachments
      */
     @PostMapping
-    @Operation(summary = "Upload file (image or PDF). type=profile|job|proposal|general")
+    @Operation(summary = "Upload file: type=profile (picture), type=cv (PDF), or job|proposal|general. Then set profileImageUrl/cvUrl in profile.")
     public ResponseEntity<ApiResponse<UploadResponse>> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "general") String type,

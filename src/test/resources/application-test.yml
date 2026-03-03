@@ -20,3 +20,7 @@ app:
     refresh-expiration-ms: 7200000
   platform:
     commission-rate: 0.10
+  rate-limit:
+    login-per-minute: 100
+    forgot-per-minute: 100
+    upload-per-minute: 100

@@ -4,9 +4,11 @@ import com.winga.entity.User;
 import com.winga.dto.request.UpdateProfileRequest;
 import com.winga.dto.request.WorkExperienceRequest;
 import com.winga.dto.response.ApiResponse;
+import com.winga.dto.response.ProfileChecklistResponse;
 import com.winga.dto.response.RatingSummaryResponse;
 import com.winga.dto.response.ReviewResponse;
 import com.winga.dto.response.UserResponse;
+import com.winga.dto.response.UserSummaryResponse;
 import com.winga.dto.response.WorkExperienceResponse;
 import com.winga.service.ReviewService;
 import com.winga.service.UserService;
@@ -41,6 +43,13 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponse>> getMyProfile(
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(ApiResponse.success(userService.toUserResponse(user)));
+    }
+
+    @GetMapping("/me/profile-checklist")
+    @Operation(summary = "Worker onboarding: list of missing required fields and completeness %")
+    public ResponseEntity<ApiResponse<ProfileChecklistResponse>> getProfileChecklist(
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(ApiResponse.success(userService.getProfileChecklist(user)));
     }
 
     @PatchMapping("/me")
@@ -88,6 +97,15 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponse>> getProfile(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 userService.toUserResponse(userService.getById(id))));
+    }
+
+    @GetMapping("/{id}/summary")
+    @Operation(summary = "Get user profile + rating summary (one call for worker cards)")
+    public ResponseEntity<ApiResponse<UserSummaryResponse>> getUserSummary(@PathVariable Long id) {
+        UserResponse user = userService.toUserResponse(userService.getById(id));
+        double avg = reviewService.getAverageRating(id);
+        long count = reviewService.getReviewCount(id);
+        return ResponseEntity.ok(ApiResponse.success(new UserSummaryResponse(user, avg, count)));
     }
 
     @GetMapping("/{id}/reviews")

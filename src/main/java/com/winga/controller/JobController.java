@@ -3,8 +3,8 @@ package com.winga.controller;
 import com.winga.entity.User;
 import com.winga.dto.request.JobRequest;
 import com.winga.dto.response.ApiResponse;
+import com.winga.dto.response.FilterOptionsPublicResponse;
 import com.winga.dto.response.JobResponse;
-import com.winga.lib.JobCategories;
 import com.winga.service.JobService;
 import com.winga.service.SavedJobService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,21 +36,37 @@ public class JobController {
     // ─── Public ──────────────────────────────────────────────────────────────────
 
     @GetMapping("/categories")
-    @Operation(summary = "List job categories (for filters)")
+    @Operation(summary = "List job categories for find-jobs filters (from DB, admin-managed)")
     public ResponseEntity<ApiResponse<List<String>>> getCategories() {
-        return ResponseEntity.ok(ApiResponse.success(JobCategories.ALL));
+        return ResponseEntity.ok(ApiResponse.success(jobService.getCategoriesForPublic()));
+    }
+
+    @GetMapping("/filter-options")
+    @Operation(summary = "Filter options for find-jobs: Employment Type, Social Media, Software, Languages (from DB, admin-managed)")
+    public ResponseEntity<ApiResponse<FilterOptionsPublicResponse>> getFilterOptions() {
+        return ResponseEntity.ok(ApiResponse.success(jobService.getFilterOptionsForPublic()));
     }
 
     @GetMapping
-    @Operation(summary = "Browse open jobs (with search & filters)")
+    @Operation(summary = "Browse open jobs (search, filters, location, sort: createdAt|budget|deadline|title)")
     public ResponseEntity<ApiResponse<Page<JobResponse>>> browseJobs(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) String employmentType,
+            @RequestParam(required = false) String socialMedia,
+            @RequestParam(required = false) String software,
+            @RequestParam(required = false) String language,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) Boolean featured,
             @RequestParam(required = false) BigDecimal minBudget,
             @RequestParam(required = false) BigDecimal maxBudget,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
 
-        Page<JobResponse> jobs = jobService.searchJobs(keyword, category, minBudget, maxBudget, pageable);
+        Page<JobResponse> jobs = jobService.searchJobs(keyword, category,
+                employmentType, socialMedia, software, language,
+                city, region, featured,
+                minBudget, maxBudget, pageable);
         return ResponseEntity.ok(ApiResponse.success(jobs));
     }
 

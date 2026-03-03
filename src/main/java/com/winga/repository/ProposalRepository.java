@@ -65,4 +65,7 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
 
     @Query("SELECT j.category, COUNT(p) FROM Proposal p JOIN p.job j WHERE p.createdAt >= :since AND j.category IS NOT NULL AND j.category <> '' GROUP BY j.category ORDER BY COUNT(p) DESC")
     List<Object[]> countByCategorySince(LocalDateTime since);
+
+    @Query("SELECT p.job.id, COUNT(p) FROM Proposal p GROUP BY p.job.id ORDER BY COUNT(p) DESC")
+    List<Object[]> countProposalsByJobId(Pageable pageable);
 }

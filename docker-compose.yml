@@ -1,0 +1,42 @@
+# Winga backend + MySQL for local dev. Usage:
+#   docker-compose up -d
+#   Backend: http://localhost:8080  (waits for MySQL to be ready)
+#   MySQL:   localhost:3306 (winga_db, user winga, password winga)
+# Set JWT_SECRET and DB password in production.
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: winga_db
+      MYSQL_USER: winga
+      MYSQL_PASSWORD: winga
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      DB_USERNAME: winga
+      DB_PASSWORD: winga
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: winga_db
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-min-32-chars}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:

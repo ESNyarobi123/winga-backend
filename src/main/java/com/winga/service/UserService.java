@@ -106,6 +106,21 @@ public class UserService {
         return auth;
     }
 
+    /** Refresh tokens: validate refresh token and issue new access + new refresh (rotation). */
+    @Transactional(readOnly = true)
+    public AuthResponse refreshTokens(String refreshToken) {
+        String email = jwtService.validateRefreshToken(refreshToken);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("User not found"));
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            throw new BusinessException("Account is deactivated.");
+        }
+        String newAccess = jwtService.generateAccessToken(user);
+        String newRefresh = jwtService.generateRefreshToken(user);
+        log.debug("Tokens refreshed for {}", email);
+        return new AuthResponse(newAccess, newRefresh, toUserResponse(user));
+    }
+
     public User getByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("User not found: " + email));
@@ -167,6 +182,24 @@ public class UserService {
         if (request.paymentPreferences() != null) {
             entity.setPaymentPreferences(request.paymentPreferences().length() > 500 ? request.paymentPreferences().substring(0, 500) : request.paymentPreferences());
         }
+        if (request.headline() != null) {
+            entity.setHeadline(request.headline().length() > 500 ? request.headline().substring(0, 500) : request.headline().trim());
+        }
+        if (request.countryCode() != null) {
+            entity.setCountryCode(request.countryCode().length() > 10 ? request.countryCode().substring(0, 10) : request.countryCode().trim());
+        }
+        if (request.typeSpeed() != null) {
+            entity.setTypeSpeed(request.typeSpeed().length() > 50 ? request.typeSpeed().substring(0, 50) : request.typeSpeed().trim());
+        }
+        if (request.internetSpeed() != null) {
+            entity.setInternetSpeed(request.internetSpeed().length() > 50 ? request.internetSpeed().substring(0, 50) : request.internetSpeed().trim());
+        }
+        if (request.computerSpecs() != null) {
+            entity.setComputerSpecs(request.computerSpecs().length() > 2000 ? request.computerSpecs().substring(0, 2000) : request.computerSpecs());
+        }
+        if (request.hasWebcam() != null) {
+            entity.setHasWebcam(request.hasWebcam());
+        }
         if (request.city() != null) {
             entity.setCity(request.city().length() > 100 ? request.city().substring(0, 100) : request.city().trim());
         }
@@ -182,18 +215,105 @@ public class UserService {
         if (request.defaultCategoryId() != null) {
             entity.setDefaultCategoryId(request.defaultCategoryId());
         }
+
+        // Worker required-field validation and profile completeness
+        if (entity.getRole() == Role.FREELANCER) {
+            validateRequiredWorkerFields(entity);
+            entity.setProfileCompleteness(computeProfileCompleteness(entity));
+        }
+
         userRepository.save(entity);
         log.debug("Profile updated for user {}", entity.getId());
         return toUserResponse(entity);
     }
 
+    /** Required for complete worker profile: fullName, country, headline, languages, paymentPreferences, workType, timezone */
+    private void validateRequiredWorkerFields(User u) {
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        if (!hasText(u.getFullName())) missing.add("fullName");
+        if (!hasText(u.getCountry())) missing.add("country");
+        if (!hasText(u.getHeadline())) missing.add("headline");
+        if (!hasText(u.getLanguages())) missing.add("languages");
+        if (!hasText(u.getPaymentPreferences())) missing.add("paymentPreferences");
+        if (!hasText(u.getWorkType())) missing.add("workType");
+        if (!hasText(u.getTimezone())) missing.add("timezone");
+        if (!missing.isEmpty()) {
+            throw new BusinessException("Profile incomplete. Required fields: " + String.join(", ", missing));
+        }
+    }
+
+    private static boolean hasText(String s) {
+        return s != null && !s.isBlank();
+    }
+
+    /**
+     * Compute worker profile completeness 0–100 based on required fields.
+     * Required: fullName, country, headline, languages, paymentPreferences, workType, timezone (7 fields).
+     */
+    public int computeProfileCompleteness(User u) {
+        if (u.getRole() != Role.FREELANCER) return 0;
+        int total = 7;
+        int filled = 0;
+        if (hasText(u.getFullName())) filled++;
+        if (hasText(u.getCountry())) filled++;
+        if (hasText(u.getHeadline())) filled++;
+        if (hasText(u.getLanguages())) filled++;
+        if (hasText(u.getPaymentPreferences())) filled++;
+        if (hasText(u.getWorkType())) filled++;
+        if (hasText(u.getTimezone())) filled++;
+        return total == 0 ? 0 : (int) Math.round(100.0 * filled / total);
+    }
+
+    /**
+     * Returns checklist for worker onboarding: completeness % and list of missing required field names.
+     * Non-FREELANCER returns complete=true, 100, empty list.
+     */
     @Transactional(readOnly = true)
-    public Page<UserResponse> findWorkers(String keyword, Pageable pageable) {
-        return userRepository.findWorkers(Role.FREELANCER, (keyword != null && !keyword.isBlank()) ? keyword.trim() : null, pageable)
+    public com.winga.dto.response.ProfileChecklistResponse getProfileChecklist(User user) {
+        User entity = userRepository.findById(user.getId())
+                .orElseThrow(() -> new com.winga.exception.ResourceNotFoundException("User", user.getId()));
+        if (entity.getRole() != Role.FREELANCER) {
+            return new com.winga.dto.response.ProfileChecklistResponse(true, 100, java.util.List.of());
+        }
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        if (!hasText(entity.getFullName())) missing.add("fullName");
+        if (!hasText(entity.getCountry())) missing.add("country");
+        if (!hasText(entity.getHeadline())) missing.add("headline");
+        if (!hasText(entity.getLanguages())) missing.add("languages");
+        if (!hasText(entity.getPaymentPreferences())) missing.add("paymentPreferences");
+        if (!hasText(entity.getWorkType())) missing.add("workType");
+        if (!hasText(entity.getTimezone())) missing.add("timezone");
+        int completeness = computeProfileCompleteness(entity);
+        return new com.winga.dto.response.ProfileChecklistResponse(
+                missing.isEmpty(),
+                completeness,
+                missing);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserResponse> findWorkers(String keyword, String employmentType, String language,
+            String skill, Long categoryId, Boolean profileVerified, Boolean profileComplete,
+            Pageable pageable) {
+        org.springframework.data.domain.Pageable safeSort = com.winga.util.SortUtils.workerSort(pageable);
+        return userRepository.findWorkers(
+                Role.FREELANCER,
+                (keyword != null && !keyword.isBlank()) ? keyword.trim() : null,
+                (employmentType != null && !employmentType.isBlank()) ? employmentType.trim() : null,
+                (language != null && !language.isBlank()) ? language.trim() : null,
+                (skill != null && !skill.isBlank()) ? skill.trim() : null,
+                categoryId,
+                profileVerified,
+                profileComplete,
+                safeSort)
                 .map(this::toUserResponse);
     }
 
     public UserResponse toUserResponse(User user) {
+        Integer completeness = user.getRole() == Role.FREELANCER ? user.getProfileCompleteness() : null;
+        if (completeness == null && user.getRole() == Role.FREELANCER) {
+            completeness = computeProfileCompleteness(user);
+        }
+        boolean isComplete = completeness != null && completeness >= 100;
         return new UserResponse(
                 user.getId(),
                 user.getFullName(),
@@ -202,6 +322,7 @@ public class UserService {
                 user.getRole(),
                 user.getProfileImageUrl(),
                 user.getBio(),
+                user.getHeadline(),
                 user.getSkills(),
                 user.getIndustry(),
                 user.getCompanyName(),
@@ -211,16 +332,25 @@ public class UserService {
                 user.getCreatedAt(),
                 user.getTelegram(),
                 user.getCountry(),
+                user.getCountryCode(),
                 user.getLanguages(),
                 user.getCvUrl(),
                 user.getWorkType(),
                 user.getTimezone(),
                 user.getPaymentPreferences(),
+                user.getTypeSpeed(),
+                user.getInternetSpeed(),
+                user.getComputerSpecs(),
+                user.getHasWebcam(),
                 user.getCity(),
                 user.getRegion(),
                 user.getLatitude(),
                 user.getLongitude(),
-                user.getDefaultCategoryId());
+                user.getDefaultCategoryId(),
+                completeness,
+                isComplete,
+                user.getProfileVerified(),
+                user.getProfileVerifiedAt());
     }
 
     // ─── OTP-based auth (register & login) ───────────────────────────────────────
@@ -314,5 +444,17 @@ public class UserService {
         String accessToken = jwtService.generateAccessToken(savedUser);
         String refreshToken = jwtService.generateRefreshToken(savedUser);
         return new AuthResponse(accessToken, refreshToken, toUserResponse(savedUser));
+    }
+
+    /** Reset password using OTP (after forgot-password: use send-otp, then this). */
+    @Transactional
+    public void resetPasswordWithOtp(String email, String otp, String newPassword) {
+        String normalized = email.toLowerCase().trim();
+        otpService.consumeOtp(normalized, otp);
+        User user = userRepository.findByEmail(normalized)
+                .orElseThrow(() -> new BusinessException("User not found for this email."));
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Password reset for user: {}", user.getEmail());
     }
 }

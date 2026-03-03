@@ -2,8 +2,10 @@ package com.winga.controller;
 
 import com.winga.entity.User;
 import com.winga.dto.request.LoginRequest;
+import com.winga.dto.request.RefreshTokenRequest;
 import com.winga.dto.request.RegisterCompleteRequest;
 import com.winga.dto.request.RegisterRequest;
+import com.winga.dto.request.ResetPasswordRequest;
 import com.winga.dto.request.SendOtpRequest;
 import com.winga.dto.request.VerifyOtpRequest;
 import com.winga.dto.response.ApiResponse;
@@ -62,6 +64,14 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Welcome to Winga Admin", auth));
     }
 
+    @PostMapping("/refresh")
+    @Operation(summary = "Refresh tokens: exchange refresh token for new access + new refresh (rotation)")
+    public ResponseEntity<ApiResponse<AuthResponse>> refresh(
+            @Valid @RequestBody RefreshTokenRequest request) {
+        AuthResponse auth = userService.refreshTokens(request.refreshToken());
+        return ResponseEntity.ok(ApiResponse.success("Tokens refreshed", auth));
+    }
+
     // ─── OTP flow: one screen for register & login (email → OTP → dashboard or choose role) ───
 
     @PostMapping("/send-otp")
@@ -79,6 +89,20 @@ public class AuthController {
                 ? "Email verified. Choose your role and complete registration."
                 : "Login successful!";
         return ResponseEntity.ok(ApiResponse.success(message, result));
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Request OTP to reset password (sends same OTP as send-otp)")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody SendOtpRequest request) {
+        userService.sendOtp(request.email());
+        return ResponseEntity.ok(ApiResponse.ok("OTP sent. Use it in reset-password within the validity period."));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Set new password using OTP (after forgot-password)")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        userService.resetPasswordWithOtp(request.email(), request.otp(), request.newPassword());
+        return ResponseEntity.ok(ApiResponse.ok("Password updated. You can now login with your new password."));
     }
 
     @PostMapping("/register/complete")

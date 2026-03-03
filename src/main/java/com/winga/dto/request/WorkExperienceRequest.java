@@ -14,5 +14,7 @@ public record WorkExperienceRequest(
         @Size(max = 20)
         String endDate,
         @Size(max = 2000)
-        String description
+        String description,
+        /** Skills learned tags e.g. ["General - Intermediate", "Sales - Intermediate"] */
+        java.util.List<String> skillsLearned
 ) {}

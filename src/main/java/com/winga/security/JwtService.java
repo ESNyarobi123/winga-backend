@@ -115,6 +115,18 @@ public class JwtService {
         return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
+    /** Validate refresh token: must have type=refresh and not expired. Returns subject (email). */
+    public String validateRefreshToken(String token) {
+        Claims claims = extractAllClaims(token);
+        if (!"refresh".equals(claims.get("type", String.class))) {
+            throw new JwtException("Invalid token type");
+        }
+        if (extractExpiration(token).before(new Date())) {
+            throw new JwtException("Refresh token expired");
+        }
+        return claims.getSubject();
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);

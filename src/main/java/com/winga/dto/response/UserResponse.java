@@ -13,6 +13,7 @@ public record UserResponse(
         Role role,
         String profileImageUrl,
         String bio,
+        String headline,
         String skills,
         String industry,
         String companyName,
@@ -22,14 +23,27 @@ public record UserResponse(
         LocalDateTime createdAt,
         String telegram,
         String country,
+        String countryCode,
         String languages,
         String cvUrl,
         String workType,
         String timezone,
         String paymentPreferences,
+        String typeSpeed,
+        String internetSpeed,
+        String computerSpecs,
+        Boolean hasWebcam,
         String city,
         String region,
         java.math.BigDecimal latitude,
         java.math.BigDecimal longitude,
-        Long defaultCategoryId) {
+        Long defaultCategoryId,
+        /** Worker profile completeness 0–100 (only for FREELANCER). */
+        Integer profileCompleteness,
+        /** True when profileCompleteness >= 100. */
+        Boolean isProfileComplete,
+        /** Admin-verified profile (worker). */
+        Boolean profileVerified,
+        /** When admin verified the profile. */
+        LocalDateTime profileVerifiedAt) {
 }

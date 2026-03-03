@@ -496,6 +496,7 @@ public class ContractService {
         contract.setTerminationReason(reason);
         contractRepository.save(contract);
 
+        notificationService.notifyDisputeOpened(contract, requestingParty);
         log.warn("Dispute raised on contract {} by user {}: {}", contractId, requestingParty.getId(), reason);
         return toContractResponse(contract);
     }
@@ -549,6 +550,7 @@ public class ContractService {
             contractRepository.save(contract);
             log.info("Dispute {} resolved: refund to client. Amount={}", contractId, escrowAmount);
         }
+        notificationService.notifyDisputeResolved(contract, releaseTo);
         return toContractResponse(contract);
     }
 

@@ -17,6 +17,10 @@ public record JobRequest(
         List<String> tags,
         String category,
         String experienceLevel, // JUNIOR, MID, SENIOR
+        String employmentType,  // slug from filter_options
+        String socialMedia,
+        String software,
+        String language,
         String city,
         String region,
         BigDecimal latitude,

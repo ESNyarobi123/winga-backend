@@ -65,9 +65,33 @@ public class User implements UserDetails {
     @Column(length = 100)
     private String telegram;
 
-    /** Job seeker: country e.g. Tanzania */
+    /** Job seeker: country e.g. Tanzania (✅ required for complete profile) */
     @Column(length = 100)
     private String country;
+
+    /** Country code for flag e.g. TZ, KE (optional) */
+    @Column(name = "country_code", length = 10)
+    private String countryCode;
+
+    /** Worker: headline / skills tagline e.g. "Virtual Assistant | Email & Scheduling Support" (✅ required for complete profile) */
+    @Column(length = 500)
+    private String headline;
+
+    /** Optional: type speed e.g. "60 WPM" or "Not specified" */
+    @Column(name = "type_speed", length = 50)
+    private String typeSpeed;
+
+    /** Optional: internet speed e.g. "10 Mbps" */
+    @Column(name = "internet_speed", length = 50)
+    private String internetSpeed;
+
+    /** Optional: computer specs (TEXT) */
+    @Column(name = "computer_specs", columnDefinition = "TEXT")
+    private String computerSpecs;
+
+    /** Optional: has webcam (Yes/No) */
+    @Column(name = "has_webcam")
+    private Boolean hasWebcam;
 
     /** Location: city e.g. Dar es Salaam */
     @Column(length = 100)
@@ -121,6 +145,13 @@ public class User implements UserDetails {
     @Builder.Default
     @Column(nullable = false)
     private Integer profileCompleteness = 0;
+
+    /** Admin-verified worker profile (display badge). Set via admin. */
+    @Column(name = "profile_verified")
+    private Boolean profileVerified;
+
+    @Column(name = "profile_verified_at")
+    private java.time.LocalDateTime profileVerifiedAt;
 
     @Builder.Default
     @Column(nullable = false)

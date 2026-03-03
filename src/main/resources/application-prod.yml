@@ -1,0 +1,33 @@
+# Production profile. Activate with: spring.profiles.active=prod
+# Ensure JWT_SECRET, DB_*, MAIL_* are set in environment.
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate   # No schema changes; use SQL migrations only.
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:winga_db}?useSSL=true&requireSSL=false&serverTimezone=Africa/Dar_es_Salaam
+
+app:
+  jwt:
+    # Required in prod. Set JWT_SECRET in env (min 32 chars). App will fail to start if missing (see ProdConfig).
+    secret: ${JWT_SECRET:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    db:
+      enabled: true
+    diskSpace:
+      enabled: true
+
+logging:
+  level:
+    com.winga: INFO
+    org.springframework.security: WARN

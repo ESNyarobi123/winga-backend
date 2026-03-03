@@ -17,5 +17,9 @@ public record AdminCreateJobRequest(
         LocalDate deadline,
         List<String> tags,
         String category,
-        String experienceLevel
+        String experienceLevel,
+        String employmentType,
+        String socialMedia,
+        String software,
+        String language
 ) {}

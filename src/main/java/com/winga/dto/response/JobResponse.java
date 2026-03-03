@@ -18,6 +18,10 @@ public record JobResponse(
         List<String> tags,
         String category,
         String experienceLevel,
+        String employmentType,
+        String socialMedia,
+        String software,
+        String language,
         Long viewCount,
         Long proposalCount,
         UserResponse client,
@@ -35,6 +39,6 @@ public record JobResponse(
                        JobStatus status, List<String> tags, String category, String experienceLevel,
                        Long viewCount, Long proposalCount, UserResponse client, LocalDateTime createdAt) {
         this(id, title, description, budget, deadline, status, tags, category, experienceLevel,
-                viewCount, proposalCount, client, createdAt, null, null, null, null, null, null, null, null);
+                null, null, null, null, viewCount, proposalCount, client, createdAt, null, null, null, null, null, null, null, null);
     }
 }

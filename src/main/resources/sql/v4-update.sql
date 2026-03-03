@@ -9,6 +9,13 @@
 --   → v5-seed-categories.sql (optional: seed job categories)
 --   → v6-seed-jobs.sql (optional: seed ~20 sample jobs + demo client)
 --   → v7-seed-freelancers.sql (optional: seed demo freelancers for Find Workers page)
+--   → v8-filter-options.sql (optional: filter options for find-jobs: Employment Type, Social Media, Software, Languages)
+--   → v9-jobs-filter-columns.sql (add employment_type, social_media, software, language to jobs)
+--   → v10-saved-workers.sql (saved_workers table for bookmarking freelancers)
+--   → v11-payment-gateway-config.sql (payment_gateway_config for admin API keys)
+--   → v12-worker-profile-fields.sql (worker profile: headline, type_speed, has_webcam, skills_learned)
+--   → v13-profile-verified.sql (profile_verified, profile_verified_at for admin)
+--   → v14-backfill-profile-completeness.sql (backfill profile_completeness for FREELANCERs)
 -- =============================================================================
 
 USE winga_db;

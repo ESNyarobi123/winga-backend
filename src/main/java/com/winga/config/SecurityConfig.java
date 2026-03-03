@@ -38,6 +38,9 @@ public class SecurityConfig {
             "/api/auth/admin/login",
             "/api/auth/send-otp",
             "/api/auth/verify-otp",
+            "/api/auth/forgot-password",
+            "/api/auth/reset-password",
+            "/api/auth/refresh",
             "/api/auth/register/complete",
             "/api/payments/callback",   // M-Pesa / gateway webhook
             "/swagger-ui/**",
@@ -62,12 +65,13 @@ public class SecurityConfig {
                         // Public
                         .requestMatchers(PUBLIC_WHITELIST).permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/jobs", "/api/jobs/categories", "/api/jobs/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/jobs", "/api/jobs/categories", "/api/jobs/filter-options", "/api/jobs/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/platform/config").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/portfolio/user/**", "/api/certifications/user/**").permitAll()
                         // Public: list workers (find-workers) and view user profile (find-workers/profile/[id])
                         .requestMatchers(HttpMethod.GET, "/api/workers").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/users/*", "/api/users/*/reviews", "/api/users/*/rating").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*", "/api/users/*/summary", "/api/users/*/reviews", "/api/users/*/rating").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/subscription/plans").permitAll()
                         // Client restricted (post, update, delete jobs)
                         .requestMatchers(HttpMethod.POST, "/api/jobs").hasRole("CLIENT")
                         .requestMatchers(HttpMethod.PUT, "/api/jobs/**").hasRole("CLIENT")
