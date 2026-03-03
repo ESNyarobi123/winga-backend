@@ -70,7 +70,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/portfolio/user/**", "/api/certifications/user/**").permitAll()
                         // Public: list workers (find-workers) and view user profile (find-workers/profile/[id])
                         .requestMatchers(HttpMethod.GET, "/api/workers").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/users/*", "/api/users/*/summary", "/api/users/*/reviews", "/api/users/*/rating").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*", "/api/users/*/summary", "/api/users/*/reviews", "/api/users/*/rating", "/api/users/*/completed-tests", "/api/users/*/experiences").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/subscription/plans").permitAll()
                         // Client restricted (post, update, delete jobs)
                         .requestMatchers(HttpMethod.POST, "/api/jobs").hasRole("CLIENT")

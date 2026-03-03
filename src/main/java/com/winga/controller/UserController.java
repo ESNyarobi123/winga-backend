@@ -9,10 +9,12 @@ import com.winga.dto.response.RatingSummaryResponse;
 import com.winga.dto.response.ReviewResponse;
 import com.winga.dto.response.UserResponse;
 import com.winga.dto.response.UserSummaryResponse;
+import com.winga.dto.response.WorkerTestResultResponse;
 import com.winga.dto.response.WorkExperienceResponse;
 import com.winga.service.ReviewService;
 import com.winga.service.UserService;
 import com.winga.service.WorkExperienceService;
+import com.winga.service.WorkerTestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,6 +39,7 @@ public class UserController {
     private final UserService userService;
     private final ReviewService reviewService;
     private final WorkExperienceService workExperienceService;
+    private final WorkerTestService workerTestService;
 
     @GetMapping("/me")
     @Operation(summary = "Get my profile")
@@ -108,6 +111,12 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(new UserSummaryResponse(user, avg, count)));
     }
 
+    @GetMapping("/{id}/experiences")
+    @Operation(summary = "Get work experiences for this user (public profile)")
+    public ResponseEntity<ApiResponse<List<WorkExperienceResponse>>> getExperiencesForUser(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(workExperienceService.getMyExperiences(id)));
+    }
+
     @GetMapping("/{id}/reviews")
     @Operation(summary = "Get reviews received by this user (for profile)")
     public ResponseEntity<ApiResponse<Page<ReviewResponse>>> getReviewsForUser(
@@ -122,5 +131,11 @@ public class UserController {
         double avg = reviewService.getAverageRating(id);
         long count = reviewService.getReviewCount(id);
         return ResponseEntity.ok(ApiResponse.success(new RatingSummaryResponse(avg, count)));
+    }
+
+    @GetMapping("/{id}/completed-tests")
+    @Operation(summary = "Get completed qualification tests for this user (for profile display)")
+    public ResponseEntity<ApiResponse<List<WorkerTestResultResponse>>> getCompletedTests(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(workerTestService.getMyCompleted(id)));
     }
 }
