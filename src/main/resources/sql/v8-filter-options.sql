@@ -1,6 +1,10 @@
 -- =============================================================================
--- Winga — Filter options table + seed (Employment Type, Social Media, Software, Languages)
+-- Winga — Filter options (Employment Type, Social Media, Software, Languages)
 -- Run after v4-update.sql. Safe to run multiple times (INSERT IGNORE on type+slug).
+--
+-- Flow:
+--   - Data is stored here and fetched by GET /api/jobs/filter-options (find-jobs page).
+--   - Admin can edit/add/delete via Admin dashboard → Filter options.
 --
 -- Run: mysql -u root -p winga_db < src/main/resources/sql/v8-filter-options.sql
 -- =============================================================================
@@ -8,11 +12,11 @@
 USE winga_db;
 
 -- -----------------------------------------------------------------------------
--- 1. filter_options table
+-- 1. filter_options table (admin-managed; options appear in find-jobs dropdowns)
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS filter_options (
   id         BIGINT       NOT NULL AUTO_INCREMENT,
-  type       VARCHAR(30)  NOT NULL,
+  type       VARCHAR(30)  NOT NULL COMMENT 'EMPLOYMENT_TYPE, SOCIAL_MEDIA, SOFTWARE, LANGUAGE',
   name       VARCHAR(100) NOT NULL,
   slug       VARCHAR(100) NOT NULL,
   sort_order INT          NOT NULL DEFAULT 0,

@@ -15,6 +15,7 @@ import com.winga.dto.request.JobCategoryRequest;
 import com.winga.dto.request.ModerateJobRequest;
 import com.winga.dto.request.PaymentOptionRequest;
 import com.winga.dto.request.ResolveDisputeRequest;
+import com.winga.dto.request.QualificationTestRequest;
 import com.winga.dto.request.SubscriptionPlanRequest;
 import com.winga.dto.response.*;
 import com.winga.dto.request.PaymentGatewayConfigRequest;
@@ -23,6 +24,7 @@ import com.winga.domain.enums.ModerationStatus;
 import java.util.List;
 import java.util.Map;
 import com.winga.service.AdminService;
+import com.winga.service.QualificationTestService;
 import com.winga.service.SubscriptionPlanService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -49,6 +51,7 @@ public class AdminController {
 
     private final AdminService adminService;
     private final SubscriptionPlanService subscriptionPlanService;
+    private final QualificationTestService qualificationTestService;
 
     @GetMapping("/users")
     @Operation(summary = "List all users (paginated)")
@@ -549,6 +552,49 @@ public class AdminController {
             @PathVariable Long id,
             @AuthenticationPrincipal User admin) {
         subscriptionPlanService.delete(id);
+        return ResponseEntity.ok(ApiResponse.ok("Deleted"));
+    }
+
+    // ─── Qualification tests (worker tests: min/max score, status, added to profile when complete) ─
+
+    @GetMapping("/qualification-tests")
+    @Operation(summary = "List all qualification tests")
+    public ResponseEntity<ApiResponse<List<QualificationTestResponse>>> listQualificationTests(
+            @AuthenticationPrincipal User admin) {
+        return ResponseEntity.ok(ApiResponse.success(qualificationTestService.listAll()));
+    }
+
+    @GetMapping("/qualification-tests/{id}")
+    @Operation(summary = "Get qualification test by ID")
+    public ResponseEntity<ApiResponse<QualificationTestResponse>> getQualificationTest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User admin) {
+        return ResponseEntity.ok(ApiResponse.success(qualificationTestService.getById(id)));
+    }
+
+    @PostMapping("/qualification-tests")
+    @Operation(summary = "Create qualification test")
+    public ResponseEntity<ApiResponse<QualificationTestResponse>> createQualificationTest(
+            @Valid @RequestBody QualificationTestRequest request,
+            @AuthenticationPrincipal User admin) {
+        return ResponseEntity.ok(ApiResponse.success(qualificationTestService.create(request)));
+    }
+
+    @PutMapping("/qualification-tests/{id}")
+    @Operation(summary = "Update qualification test")
+    public ResponseEntity<ApiResponse<QualificationTestResponse>> updateQualificationTest(
+            @PathVariable Long id,
+            @Valid @RequestBody QualificationTestRequest request,
+            @AuthenticationPrincipal User admin) {
+        return ResponseEntity.ok(ApiResponse.success(qualificationTestService.update(id, request)));
+    }
+
+    @DeleteMapping("/qualification-tests/{id}")
+    @Operation(summary = "Delete qualification test")
+    public ResponseEntity<ApiResponse<Void>> deleteQualificationTest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User admin) {
+        qualificationTestService.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Deleted"));
     }
 
