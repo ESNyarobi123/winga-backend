@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { connectWhatsApp, getSocket } from './handle.js';
+import { connectWhatsApp, getSocket, whenReady } from './handle.js';
 
 const app = express();
 app.use(express.json());
@@ -53,8 +53,9 @@ app.get('/health', (req, res) => {
 
 const PORT = process.env.PORT || 3100;
 
-// Kwanza connect WhatsApp (QR itaonekana hapa), kisha fungua server
+// Kwanza connect WhatsApp. QR itaonekana (au baada ya retry). Server inaanza mara baada ya kuona QR/open au baada ya 20s.
 connectWhatsApp()
+  .then(() => Promise.race([whenReady, new Promise((r) => setTimeout(r, 20000))]))
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Winga-otp server: http://localhost:${PORT}`);
