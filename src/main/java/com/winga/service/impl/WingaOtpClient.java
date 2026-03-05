@@ -53,12 +53,15 @@ public class WingaOtpClient implements WhatsappOtpSender {
         }
     }
 
-    /** Normalize to WhatsApp format: 255712345678 (no +, with country code). */
+    /** Normalize to WhatsApp format: 255712345678 (no +, country code 255, then 9 digits starting with 6 or 7). */
     private String normalizePhoneForWhatsApp(String phone) {
         if (phone == null) return "";
         String p = phone.replaceAll("\\s", "").replace("+", "").trim();
         if (p.startsWith("0") && p.length() >= 9) {
             p = "255" + p.substring(1);
+        } else if (p.startsWith("2550") && p.length() == 13 && p.charAt(4) == '0') {
+            // +2550678165524 → 255678165524 (ondoa 0 ya ziada baada ya 255)
+            p = "255" + p.substring(5);
         } else if (!p.startsWith("255") && p.length() == 9 && p.matches("[67]\\d{8}")) {
             p = "255" + p;
         }
