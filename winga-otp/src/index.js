@@ -17,17 +17,20 @@ function getJid(phone) {
 
 app.post('/send-otp', async (req, res) => {
   const { phone, code, expiryMinutes = 10, appName = 'Winga' } = req.body || {};
+  console.log('POST /send-otp received:', { phone, code: code ? '****' : null });
   if (!phone || !code) {
     return res.status(400).json({ ok: false, error: 'phone and code required' });
   }
 
   const jid = getJid(phone);
   if (!jid) {
+    console.error('Invalid phone for WhatsApp:', phone);
     return res.status(400).json({ ok: false, error: 'Invalid phone number' });
   }
 
   const sock = getSocket();
   if (!sock) {
+    console.error('WhatsApp not connected — cannot send to', jid);
     return res.status(503).json({
       ok: false,
       error: 'WhatsApp haijaungani. Scan QR kwanza (npm start), kisha subiri "WhatsApp imeungana".',
@@ -37,9 +40,10 @@ app.post('/send-otp', async (req, res) => {
   const text = `${appName} — Your verification code: *${code}*\n\nThis code expires in ${expiryMinutes} minutes. Do not share it.`;
   try {
     await sock.sendMessage(jid, { text });
+    console.log('WhatsApp OTP sent to', jid);
     res.json({ ok: true, sent: true });
   } catch (e) {
-    console.error('Send OTP failed:', e.message);
+    console.error('Send OTP failed to', jid, ':', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });

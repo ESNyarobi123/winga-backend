@@ -67,9 +67,9 @@ app:
     expiry-minutes: 10
 
   # WhatsApp OTP (Winga-otp service using Baileys). When set, login OTP is also sent to user's WhatsApp.
-  # Leave empty to send OTP only via email.
+  # Default http://localhost:3100 (dev). Production: set WINGA_OTP_BASE_URL. To disable: set WINGA_OTP_BASE_URL=
   winga-otp:
-    base-url: ${WINGA_OTP_BASE_URL:}   # e.g. http://localhost:3100
+    base-url: ${WINGA_OTP_BASE_URL:http://localhost:3100}
 
   # ─── Platform Business Rules ─────────────────────────────────────────────────
   platform:

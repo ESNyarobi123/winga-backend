@@ -29,7 +29,10 @@ public class WingaOtpClient implements WhatsappOtpSender {
 
     @Override
     public void sendOtpToWhatsApp(String phoneNumber, String otpCode, int expiryMinutes) {
-        if (baseUrl == null || baseUrl.isBlank()) return;
+        if (baseUrl == null || baseUrl.isBlank()) {
+            log.debug("WhatsApp OTP skipped: app.winga-otp.base-url not set");
+            return;
+        }
         if (phoneNumber == null || phoneNumber.isBlank()) return;
         String normalized = normalizePhoneForWhatsApp(phoneNumber);
         if (normalized.isBlank()) {
@@ -38,6 +41,7 @@ public class WingaOtpClient implements WhatsappOtpSender {
         }
         String url = baseUrl.endsWith("/") ? baseUrl + "send-otp" : baseUrl + "/send-otp";
         try {
+            log.info("Sending WhatsApp OTP to {} via {}", normalized, url);
             var headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             var body = new java.util.LinkedHashMap<String, Object>();
