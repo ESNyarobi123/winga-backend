@@ -53,6 +53,9 @@ app.get('/health', (req, res) => {
 
 const PORT = process.env.PORT || 3100;
 
+console.log('Winga-otp: Inaanza...');
+console.log('Kama QR haionekani na "Connection Failure" inaendelea: futa folder auth_info, kisha npm start tena.\n');
+
 // Kwanza connect WhatsApp. QR itaonekana (au baada ya retry). Server inaanza mara baada ya kuona QR/open au baada ya 20s.
 connectWhatsApp()
   .then(() => Promise.race([whenReady, new Promise((r) => setTimeout(r, 20000))]))
