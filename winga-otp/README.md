@@ -48,6 +48,10 @@ Weka URL ya Winga-otp:
 
 Kama `base-url` haijawekwa, OTP inatumwa **email tu** (WhatsApp haijazima).
 
+## Baileys version
+
+Tumia **6.6.0** (imewekwa kwenye package.json). Baileys 6.7.x ina bug ya statusCode 405 (Connection Failure) — QR haitoki. Usi-upgrade bila kujaribu.
+
 ## Production
 
 - Tumia namba ya simu maalum kwa “Winga OTP” (si personal).
