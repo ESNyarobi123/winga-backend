@@ -11,22 +11,3 @@ Admin@1234
 
 hizi ndizo categories zi add kwa database  na pia sindio admin anaweza tengeneza pia na pia zita display kwa admin aweze edity au update au create     
 
-Programming & Tech
-    Writing and translation
-    Real Estate Support
-    Legal and Financial
-    Pets and Animal Care
-    Photography
-    Administrative services
-    Others services
-    Career Services
-    Education and Tutoring
-    Transport Services
-    Skilled handyman
-    Home services
-    Creative & Digital
-    Project supervision
-    Health & care
-    Care & Support
-    Delivery services
-    Personal assistance

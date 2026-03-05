@@ -355,9 +355,22 @@ public class UserService {
 
     // ─── OTP-based auth (register & login) ───────────────────────────────────────
 
+    /**
+     * Send OTP to email. For existing users who have a phone number in profile,
+     * the same OTP is also sent to their WhatsApp (so they can use either channel to login).
+     * New users (registration) get OTP only by email.
+     */
     public void sendOtp(String email) {
         String normalized = email.toLowerCase().trim();
-        otpService.sendOtp(normalized);
+        var userOpt = userRepository.findByEmail(normalized);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            String phone = (user.getPhoneNumber() != null && !user.getPhoneNumber().isBlank())
+                    ? user.getPhoneNumber() : null;
+            otpService.sendOtp(normalized, phone);
+        } else {
+            otpService.sendOtp(normalized, null);
+        }
     }
 
     public VerifyOtpResponse verifyOtp(String email, String otp) {

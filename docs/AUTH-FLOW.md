@@ -18,6 +18,7 @@
 ## Login (mtumiaji aliyesajiliwa)
 
 1. **Enter Email** → `POST /api/auth/send-otp` `{ "email": "..." }`
+   - OTP inatumwa kwenye **email**. Kama user ana **namba ya simu (WhatsApp)** kwenye profile na Winga-otp iko configured, **OTP ile ile** inatumwa pia kwenye **WhatsApp**. User anaweza kuchukua code kutoka email au WhatsApp.
 2. **Verify OTP** → `POST /api/auth/verify-otp` `{ "email": "...", "otp": "123456" }`  
    - Response: `requiresRegistration: false`, `auth: { accessToken, refreshToken, user }`
 3. **Dashboard** (tumia `accessToken` kwa API)
@@ -33,3 +34,11 @@
 | 3          | Select Role                 | —           |
 | 4          | Role-Specific Details / Skip| —           |
 | 5          | Dashboard                   | Dashboard   |
+
+---
+
+## WhatsApp OTP (login tu)
+
+- **Registration:** OTP inatumwa **email tu** (mtumiaji mpya hapo hana account).
+- **Login:** Kama user tayari ana **phone number** kwenye profile na `app.winga-otp.base-url` imewekwa, backend inatuma OTP kwenye **email** na **WhatsApp** (code moja). Mtumiaji anaweza kuangalia email au WhatsApp na kuweka OTP.
+- Huduma ya WhatsApp: **Winga-otp** (Baileys, Node.js). Tazama `winga-otp/README.md`.

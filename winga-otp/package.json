@@ -1,0 +1,16 @@
+{
+  "name": "winga-otp",
+  "version": "1.0.0",
+  "description": "WhatsApp OTP sender for Winga (Baileys). Called by winga-backend when user logs in.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.9",
+    "express": "^4.21.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

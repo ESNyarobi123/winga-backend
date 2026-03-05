@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * In-memory OTP store for email verification (register & login).
- * Sends OTP via EmailService (winga@ericksky.online SMTP). Use Redis in production for store.
+ * Sends OTP via EmailService. For login, if user has WhatsApp number we also send same OTP via Winga-otp.
  */
 @Service
 @Slf4j
@@ -24,6 +24,7 @@ public class OtpService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final EmailService emailService;
+    private final WhatsappOtpSender whatsappOtpSender;
 
     @Value("${app.otp.expiry-minutes:10}")
     private int expiryMinutes;
@@ -31,12 +32,28 @@ public class OtpService {
     /** Key: email (normalized), Value: { code, expiresAt } */
     private final Map<String, OtpEntry> store = new ConcurrentHashMap<>();
 
+    /** Send OTP to email only (e.g. registration or user has no phone). */
     public void sendOtp(String email) {
+        sendOtp(email, null);
+    }
+
+    /**
+     * Send OTP to email and optionally to user's WhatsApp (same code).
+     * Use when existing user logs in and has phone number in profile.
+     */
+    public void sendOtp(String email, String phoneNumberForWhatsApp) {
         String normalized = email.toLowerCase().trim();
         String code = generateCode();
         Instant expiresAt = Instant.now().plusSeconds(expiryMinutes * 60L);
         store.put(normalized, new OtpEntry(code, expiresAt));
         emailService.sendOtpEmail(normalized, code, expiryMinutes);
+        if (phoneNumberForWhatsApp != null && !phoneNumberForWhatsApp.isBlank()) {
+            try {
+                whatsappOtpSender.sendOtpToWhatsApp(phoneNumberForWhatsApp, code, expiryMinutes);
+            } catch (Exception e) {
+                log.warn("WhatsApp OTP send failed for {}: {}", phoneNumberForWhatsApp, e.getMessage());
+            }
+        }
     }
 
     public boolean verifyOtp(String email, String otp) {

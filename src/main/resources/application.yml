@@ -66,6 +66,11 @@ app:
   otp:
     expiry-minutes: 10
 
+  # WhatsApp OTP (Winga-otp service using Baileys). When set, login OTP is also sent to user's WhatsApp.
+  # Leave empty to send OTP only via email.
+  winga-otp:
+    base-url: ${WINGA_OTP_BASE_URL:}   # e.g. http://localhost:3100
+
   # ─── Platform Business Rules ─────────────────────────────────────────────────
   platform:
     commission-rate: 0.15            # 15% platform fee (Winga commission on completed jobs)
