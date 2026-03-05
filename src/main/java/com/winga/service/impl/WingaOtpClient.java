@@ -24,6 +24,9 @@ public class WingaOtpClient implements WhatsappOtpSender {
     @Value("${app.winga-otp.base-url:}")
     private String baseUrl;
 
+    @Value("${app.winga-otp.api-key:}")
+    private String apiKey;
+
     @Value("${app.platform.name:Winga}")
     private String appName;
 
@@ -39,11 +42,14 @@ public class WingaOtpClient implements WhatsappOtpSender {
             log.warn("Invalid phone for WhatsApp OTP: {}", phoneNumber);
             return;
         }
-        String url = baseUrl.endsWith("/") ? baseUrl + "send-otp" : baseUrl + "/send-otp";
+        String url = baseUrl.replaceAll("/$", "") + "/send-otp";
         try {
             log.info("Sending WhatsApp OTP to {} via {}", normalized, url);
             var headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            if (apiKey != null && !apiKey.isBlank()) {
+                headers.set("X-API-Key", apiKey);
+            }
             var body = new java.util.LinkedHashMap<String, Object>();
             body.put("phone", normalized);
             body.put("code", otpCode);

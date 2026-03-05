@@ -41,4 +41,4 @@
 
 - **Registration:** OTP inatumwa **email tu** (mtumiaji mpya hapo hana account).
 - **Login:** Kama user tayari ana **phone number** kwenye profile na `app.winga-otp.base-url` imewekwa, backend inatuma OTP kwenye **email** na **WhatsApp** (code moja). Mtumiaji anaweza kuangalia email au WhatsApp na kuweka OTP.
-- Huduma ya WhatsApp: **Winga-otp** (Baileys, Node.js). Tazama `winga-otp/README.md`.
+- Huduma ya WhatsApp: **Winga-otp** (Baileys, Node.js) — project tofauti; inaendesha kwenye URL (WINGA_OTP_BASE_URL, default http://localhost:3100).
